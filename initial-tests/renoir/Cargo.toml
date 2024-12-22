@@ -1,0 +1,8 @@
+[package]
+name = "re-noir"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+renoir = { git = "https://github.com/deib-polimi/renoir"}
+serde = "1.0.216"
