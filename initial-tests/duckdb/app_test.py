@@ -1,14 +1,17 @@
 import duckdb
 import pandas as pd
 from pathlib import Path
+import os
 
-APP_PATH = Path(__file__).resolve().parent
-DATA_PATH = APP_PATH.parent / "data"
-INPUT_PATH = DATA_PATH / "input"
-OUTPUT_PATH = DATA_PATH / "output" / "duckdb"
 
+# read paths from environment variables with fallback values
+INPUT_PATH = Path(os.environ.get("INPUT_PATH"))
+OUTPUT_PATH = Path(os.environ.get("OUTPUT_PATH")) / "duckdb"
+
+# make sure the output path exists
 OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
+# SQL queries
 queries = [
     "SELECT * FROM data WHERE data.int4 is NOT NULL",  # filter nan
     "SELECT data.int1, data.string1, COALESCE(data.int4, 0) AS int4 FROM data",  # fill nan
@@ -17,8 +20,7 @@ queries = [
     "SELECT string1, avg(int4) as mean FROM data GROUP BY string1"  # avg
 ]
 
-
-def init_db(csv_path : str) -> duckdb.DuckDBPyConnection:
+def init_db(csv_path: str) -> duckdb.DuckDBPyConnection:
     """
     Create db in-memory connection and load data from the input file
     returning the connection
@@ -39,21 +41,22 @@ def run_and_save_query(conn, query, output_path, debug=False):
     else:
         result_df.to_csv(output_path, index=False)
 
-
 if __name__ == "__main__":
-
+    # construct input CSV path
     input_csv = INPUT_PATH / "ints_string.csv"
     
+    # check if the input file exists
     if not input_csv.is_file():
-        print(f"Please check input file path {input_csv}")
+        print(f"Please check input file path: {input_csv}")
         exit(1)
     
-    conn = init_db(input_csv)
+    # initialize database
+    conn = init_db(str(input_csv))
+    
+    # run queries and save results
     for i, query in enumerate(queries):
         save_to = OUTPUT_PATH / f"query_{i}.csv"
-        run_and_save_query(conn, query, save_to, False)
+        run_and_save_query(conn, query, save_to, debug=False)
     
+    # close connection
     conn.close()
-
-
-    
