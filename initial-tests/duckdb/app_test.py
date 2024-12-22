@@ -15,8 +15,8 @@ OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 queries = [
     "SELECT * FROM data WHERE data.int4 is NOT NULL",  # filter nan
     "SELECT data.int1, data.string1, COALESCE(data.int4, 0) AS int4 FROM data",  # fill nan
-    "SELECT string1, sum(int4) as sum FROM data WHERE data.string1 LIKE '%a%' GROUP BY string1",  # filter and sum
-    "SELECT * FROM data WHERE int4 is NOT NULL and int4 % 2 = 0",  # filter with computation
+    "SELECT * FROM data WHERE int4 is NOT NULL and int4 % 2 = 0", # filter with computation
+    "SELECT string1, sum(int4) as sum FROM data WHERE data.string1 LIKE '%a%' GROUP BY string1",  # filter and sum 
     "SELECT string1, avg(int4) as mean FROM data GROUP BY string1"  # avg
 ]
 
