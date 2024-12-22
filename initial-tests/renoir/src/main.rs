@@ -70,7 +70,6 @@ fn main() {
     // 5) group and aggregate with one accumulator
     let _group_by_avg  = splits.pop()
         .unwrap()
-        .filter(|row| row.string1.contains("a"))
         .group_by_avg(|row| row.string1.clone(), |row| row.int4.unwrap_or_default() as f64)
         .unkey()
         .write_csv_seq(output_path.join("query_4.csv"), false);
