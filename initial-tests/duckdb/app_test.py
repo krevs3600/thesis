@@ -4,7 +4,7 @@ from pathlib import Path
 import os
 
 
-# read paths from environment variables with fallback values
+# read paths from environment variables
 INPUT_PATH = Path(os.environ.get("INPUT_PATH"))
 OUTPUT_PATH = Path(os.environ.get("OUTPUT_PATH")) / "duckdb"
 
