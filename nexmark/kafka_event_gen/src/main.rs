@@ -1,11 +1,14 @@
 mod model;
 
-use model::*;
+
 use clap::{Parser, Subcommand};
+
+use model::consumer::KafkaConsumer;
+use model::events::KafkaEvent;
+use model::producer::KafkaEventProducer;
 use nexmark::config::NexmarkConfig;
-use events::KafkaEvent;
-use producer::KafkaEventProducer;
-use consumer::KafkaConsumer;
+use model::admin;
+
 use tokio::task;
 use std::thread::sleep;
 use std::{collections::VecDeque, sync::Arc, sync::Mutex};
