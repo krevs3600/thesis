@@ -10,6 +10,7 @@ use nexmark::config::NexmarkConfig;
 use model::admin;
 
 use tokio::task;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::sleep;
 use std::{collections::VecDeque, sync::Arc, sync::Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -95,12 +96,15 @@ async fn main() {
             // Proceed to generate events if --generate flag is provided
             let producer = Arc::new(KafkaEventProducer::new(brokers));
             let incoming_events = Arc::new(Mutex::new(VecDeque::new()));
+            let event_generation_complete = Arc::new(AtomicBool::new(false));
             
+            let consumer_event_complete = Arc::clone(&event_generation_complete);
             let consumer = KafkaConsumer::new(
                 brokers,
                 format!("{}-topic", topic.unwrap()).as_str(), 
                 "res-consumer",  // Consumer group name
                 Arc::clone(&incoming_events),
+                consumer_event_complete
             );
 
             // Data structure to store outgoing events for later saving
@@ -168,6 +172,8 @@ async fn main() {
             for handle in generator_handles {
                 handle.await.unwrap();
             }
+
+            event_generation_complete.store(true, Ordering::SeqCst);
 
             // Wait for consumer to finish
             consumer_handle.await.unwrap();
