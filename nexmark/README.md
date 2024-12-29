@@ -13,7 +13,12 @@ Below the instructions to run the nexmark benchmark.
  ./renoir_nexmark -q <query_number>
 ```
 
-### Flink
-// TODO
 ### Risingwave
+
+```shell
+docker compose up -d # to start the risingwave instance
+python app.py # to setup risingwave [todo: query selector]
+```
+
+### Flink
 // TODO

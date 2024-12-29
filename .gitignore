@@ -1,7 +1,8 @@
 # ignore output files
-/data/output/*/*
+output/
 env.sh
 
 # ignore any python cache files
 __pycache__/
 *.pyc
+target/
