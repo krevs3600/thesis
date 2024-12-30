@@ -2,18 +2,10 @@ from nexmark import Query
 from psycopg2._psycopg import connection
 
 class Query4(Query):
-
-    def __init__(self, conn : connection):
-        super().__init__(conn)
-
-    def execute_sql(self, sqlStatement : str):
-        super().__init__(sqlStatement)
-
    
     def create_sources(self):
         self.execute_sql(self.bid_source_sql)
         self.execute_sql(self.auction_source_sql)
-        pass
     
    
     def create_materialized_view(self):
@@ -22,7 +14,8 @@ class Query4(Query):
             SELECT 
                 A.id AS auction_id,
                 A.category AS category_id,
-                MAX(B.price) AS final_price
+                MAX(B.price) AS final_price,
+                MAX(B.date_time) AS max_bid_date_time
             FROM 
                 auction A
             JOIN 
@@ -38,7 +31,8 @@ class Query4(Query):
             CREATE MATERIALIZED VIEW IF NOT EXISTS query AS
             SELECT 
                 category_id,
-                AVG(final_price) AS average_price
+                AVG(final_price) AS average_price,
+                MAX(max_bid_date_time) AS date_time
             FROM 
                 winning_bids
             GROUP BY 

@@ -313,17 +313,20 @@ def main():
     conn.close()
 
 
-def bench():
+def bench(debug=False):
     create_db()
     conn = get_conn()
-    query : Query = Query2(conn)
+    query : Query = Query8(conn)
     query.create_sources()
     query.drop_materialized_view()
     query.create_materialized_view()
     query.create_sink()
     #query.create_subscriber()
-    #data = query.debug()
-    #print(data)
+    if debug:
+        for i in range(5):
+            data = query.debug()
+            print(data)
+            time.sleep(10)
     conn.close()
 
 if __name__ == "__main__":

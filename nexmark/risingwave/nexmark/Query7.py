@@ -12,9 +12,9 @@ class Query7(Query):
     def create_materialized_view(self):
         query = """
             CREATE MATERIALIZED VIEW IF NOT EXISTS query AS
-            SELECT B.auction, B.price, B.bidder
+            SELECT B.auction, B.price, B.bidder, max_date_time as date_time
             FROM (
-                SELECT auction, price, bidder, MAX(price) AS max_price
+                SELECT auction, price, bidder, MAX(price) AS max_price, MAX(date_time) AS max_date_time
                 FROM HOP(
                     bid,              
                     date_time,

@@ -11,11 +11,11 @@ class Query3(Query):
     def create_materialized_view(self):
         query = """
             CREATE MATERIALIZED VIEW IF NOT EXISTS query AS
-            SELECT person.name, person.city, person.state, auction.id
+            SELECT person.name, person.city, person.state, auction.id, person.date_time
             FROM auction, person
             WHERE 
                 auction.seller = person.id
-                AND (person.state = 'OR' OR person.state = 'ID' OR person.state = 'CA')
+                AND (person.state = 'or' OR person.state = 'id' OR person.state = 'ca')
                 AND auction.category = 10;
         """
         self.execute_sql(query)

@@ -12,9 +12,9 @@ class Query6(Query):
     def create_materialized_view(self):
         query = """
             CREATE MATERIALIZED VIEW IF NOT EXISTS query AS
-            SELECT AVG(Q.final) AS avg_final_price, Q.seller
+            SELECT AVG(Q.final) AS avg_final_price, Q.seller, MAX(Q.max_date_time) as date_time
             FROM (
-                SELECT MAX(b.price) AS final, a.seller
+                SELECT MAX(b.price) AS final, a.seller, MAX(b.date_time) as max_date_time
                 FROM auction a
                 JOIN bid b ON a.id = b.auction
                 WHERE b.date_time < a.expires
