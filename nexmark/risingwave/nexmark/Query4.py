@@ -15,7 +15,7 @@ class Query4(Query):
                 A.id AS auction_id,
                 A.category AS category_id,
                 MAX(B.price) AS final_price,
-                MAX(B.date_time) AS max_bid_date_time
+                MAX(B.idx) AS max_bid_idx
             FROM 
                 auction A
             JOIN 
@@ -32,7 +32,7 @@ class Query4(Query):
             SELECT 
                 category_id,
                 AVG(final_price) AS average_price,
-                MAX(max_bid_date_time) AS date_time
+                MAX(max_bid_idx) AS idx
             FROM 
                 winning_bids
             GROUP BY 

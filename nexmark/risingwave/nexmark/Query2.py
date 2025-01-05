@@ -11,7 +11,7 @@ class Query2(Query):
     def create_materialized_view(self):
         query = """
             CREATE MATERIALIZED VIEW IF NOT EXISTS query AS
-            SELECT auction, price, date_time
+            SELECT auction, price, idx
             FROM bid
             WHERE 
                 (auction = 1007 OR

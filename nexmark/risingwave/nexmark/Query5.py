@@ -14,20 +14,18 @@ class Query5(Query):
                 SELECT 
                     auction, 
                     COUNT(*) AS num, 
-                    MAX(date_time) AS last_bid_time
-                FROM HOP(bid, date_time, INTERVAL '1 MINUTE', INTERVAL '2 MINUTES')
-                GROUP BY auction
-            ),
-            max_count AS (
-                SELECT MAX(num) AS max_num
-                FROM hop_table
-            ) 
+                    MAX(idx) AS last_idx,
+                    window_start,
+                    window_end
+                FROM HOP(bid, date_time, INTERVAL '10 SECONDS', INTERVAL '20 SECONDS')
+                GROUP BY auction, window_start, window_end
+            )
             SELECT 
                 auction,
-                last_bid_time AS date_time
-            FROM hop_table, max_count
-            WHERE num = max_num;
-        """
+                last_idx AS idx,
+                window_start,
+                window_end
+            FROM hop_table;"""
 
         self.execute_sql(query)
 

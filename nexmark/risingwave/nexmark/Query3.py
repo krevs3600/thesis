@@ -11,7 +11,7 @@ class Query3(Query):
     def create_materialized_view(self):
         query = """
             CREATE MATERIALIZED VIEW IF NOT EXISTS query AS
-            SELECT person.name, person.city, person.state, auction.id, person.date_time
+            SELECT person.name, person.city, person.state, auction.id, person.idx
             FROM auction, person
             WHERE 
                 auction.seller = person.id

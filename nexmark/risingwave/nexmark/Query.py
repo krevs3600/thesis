@@ -8,6 +8,7 @@ class Query(ABC):
         self.conn = conn
         self.bid_source_sql = """
         CREATE SOURCE IF NOT EXISTS bid (
+            idx BIGINT,
             auction BIGINT,
             bidder BIGINT,
             price DOUBLE,
@@ -27,6 +28,7 @@ class Query(ABC):
         """
         self.person_source_sql = """
         CREATE SOURCE IF NOT EXISTS person (
+            idx BIGINT,
             id BIGINT,
             name VARCHAR,
             email_address VARCHAR,
@@ -46,6 +48,7 @@ class Query(ABC):
         """
         self.auction_source_sql = """
         CREATE SOURCE IF NOT EXISTS auction (
+            idx BIGINT,
             id BIGINT,
             item_name VARCHAR,
             description VARCHAR,

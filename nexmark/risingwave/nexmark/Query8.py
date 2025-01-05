@@ -12,7 +12,7 @@ class Query8(Query):
     def create_materialized_view(self):
         query = """
             CREATE MATERIALIZED VIEW IF NOT EXISTS query AS
-            SELECT P.id, P.name, A.reserve, P.date_time
+            SELECT P.id, P.name, A.reserve, P.idx
             FROM person P, auction A
             WHERE P.id = A.seller
             AND P.date_time >= NOW() - INTERVAL '12 HOURS'

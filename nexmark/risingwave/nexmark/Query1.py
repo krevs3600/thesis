@@ -12,7 +12,7 @@ class Query1(Query):
     def create_materialized_view(self):
         query = """
             CREATE MATERIALIZED VIEW IF NOT EXISTS query AS
-            SELECT auction, price * 0.908 AS price_dol, bidder, date_time
+            SELECT auction, price * 0.908 AS price_dol, bidder, idx
             FROM bid;
         """
         self.execute_sql(query)

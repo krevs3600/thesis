@@ -316,7 +316,7 @@ def main():
 def bench(debug=False):
     create_db()
     conn = get_conn()
-    query : Query = Query8(conn)
+    query : Query = Query9(conn)
     query.create_sources()
     query.drop_materialized_view()
     query.create_materialized_view()

@@ -7,3 +7,4 @@ from .Query5 import Query5
 from .Query6 import Query6
 from .Query7 import Query7
 from .Query8 import Query8
+from .Query9 import Query9
