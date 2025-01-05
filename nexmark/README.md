@@ -21,4 +21,4 @@ python app.py # to setup risingwave [todo: query selector]
 ```
 
 ### Flink
-// TODO
+Check the README.md in the project folder
