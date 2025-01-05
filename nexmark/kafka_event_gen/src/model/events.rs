@@ -1,13 +1,16 @@
 
 use serde_json::{json, Value};
 use nexmark::event::{Event, Person, Auction, Bid};
+use chrono::{prelude::DateTime, Local};
+use chrono::Utc;
+use std::time::{UNIX_EPOCH, Duration};
 
 
 // Define the trait to convert events to JSON and specify their topics
 
 
 pub trait  KafkaEvent {
-    fn to_json(&self) -> Value;
+    fn to_json(&self, idx : u64) -> Value;
     fn topic(&self) -> &str;
     fn key(&self) -> String;
     fn get_event_time(&self) -> u64;
@@ -17,15 +20,19 @@ pub trait  KafkaEvent {
 
 // Implement `KafkaEvent` for `Person`
 impl KafkaEvent for Person {
-    fn to_json(&self) -> Value {
+    fn to_json(&self, idx : u64) -> Value {
+        let d = UNIX_EPOCH + Duration::from_millis(self.date_time);
+        let datetime = DateTime::<Utc>::from(d);
+        let timestamp_str = datetime.format("%Y-%m-%d %H:%M:%S").to_string();
         json!({
+            "idx" : idx,
             "id": self.id,
             "name": self.name,
             "email_address": self.email_address,
             "credit_card": self.credit_card,
             "city": self.city,
             "state": self.state,
-            "date_time": self.date_time,
+            "date_time": timestamp_str,
             "extra": self.extra
         })
     }
@@ -48,15 +55,23 @@ impl KafkaEvent for Person {
 }
 
 impl KafkaEvent for Auction {
-    fn to_json(&self) -> Value {
+    fn to_json(&self, idx : u64) -> Value {
+        let d = UNIX_EPOCH + Duration::from_millis(self.date_time);
+        let datetime = DateTime::<Local>::from(d);
+        let time_date_str = datetime.format("%Y-%m-%d %H:%M:%S").to_string();
+
+        let d = UNIX_EPOCH + Duration::from_millis(self.date_time);
+        let datetime = DateTime::<Local>::from(d);
+        let expire_date_str = datetime.format("%Y-%m-%d %H:%M:%S").to_string();
         json!({
+            "idx" : idx,
             "id": self.id,
             "item_name": self.item_name,
             "description": self.description,
             "initial_bid": self.initial_bid,
             "reserve": self.reserve,
-            "date_time": self.date_time,
-            "expires": self.expires,
+            "date_time": time_date_str,
+            "expires": expire_date_str,
             "seller": self.seller,
             "category": self.category,
             "extra": self.extra
@@ -82,14 +97,18 @@ impl KafkaEvent for Auction {
 
 
 impl KafkaEvent for Bid {
-    fn to_json(&self) -> Value {
+    fn to_json(&self, idx : u64) -> Value {
+        let d = UNIX_EPOCH + Duration::from_millis(self.date_time);
+        let datetime = DateTime::<Local>::from(d);
+        let timestamp_str = datetime.format("%Y-%m-%d %H:%M:%S").to_string();
         json!({
+            "idx" : idx,
             "auction": self.auction,
             "bidder": self.bidder,
             "price": self.price,
             "channel": self.channel,
             "url": self.url,
-            "date_time": self.date_time,
+            "date_time": timestamp_str,
             "extra": self.extra
         })
     }
@@ -113,11 +132,11 @@ impl KafkaEvent for Bid {
 
 
 impl KafkaEvent for Event {
-    fn to_json(&self) -> Value {
+    fn to_json(&self, idx : u64) -> Value {
         match self {
-            Event::Person(p) => p.to_json(),
-            Event::Auction(a) => a.to_json(),
-            Event::Bid(b) => b.to_json(),
+            Event::Person(p) => p.to_json(idx),
+            Event::Auction(a) => a.to_json(idx),
+            Event::Bid(b) => b.to_json(idx),
         }
     }
 

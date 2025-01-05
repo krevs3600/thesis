@@ -76,10 +76,10 @@ impl KafkaConsumer {
                         }
                     };
 
-                    let event_time = match json_value["date_time"].as_u64() {
-                        Some(time) => time,
+                    let idx = match json_value["idx"].as_u64() {
+                        Some(idx) => idx,
                         None => {
-                            eprintln!("Missing or invalid event_time in payload");
+                            eprintln!("Missing or invalid index in payload");
                             continue;
                         }
                     };
@@ -90,7 +90,7 @@ impl KafkaConsumer {
                         .as_nanos() as u64;
 
                     let mut incoming = self.incoming_events.lock().unwrap();
-                    incoming.push_back((event_time, timestamp));
+                    incoming.push_back((idx, timestamp));
                 }
                 Ok(Some(Err(e))) => {
                     eprintln!("Error while consuming message: {}", e);

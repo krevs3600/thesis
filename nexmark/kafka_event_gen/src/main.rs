@@ -137,8 +137,8 @@ async fn main() {
                         let extra_event = (i < total_events % num_generators) as usize;
 
                         // Generate events and send them to Kafka
-                        for event in generator.take(events_per_generator + extra_event) {
-                            let json_value = event.to_json();  // Convert event to JSON
+                        for (idx, event) in generator.take(events_per_generator + extra_event).enumerate() {
+                            let json_value = event.to_json(idx as u64);  // Convert event to JSON
                             let topic = event.topic();  // Kafka topic for the event
                             let key = event.key();  // Event key for partitioning
                             let json_str = serde_json::to_string(&json_value).expect("Failed to serialize event to JSON");
@@ -154,7 +154,7 @@ async fn main() {
 
                             // Store event data in outgoing events queue
                             let mut outgoing = outgoing_events.lock().unwrap();
-                            outgoing.push_back((event.get_event_time(), time_stamp));
+                            outgoing.push_back((idx as u64, time_stamp));
                         }
                     })
                 })
