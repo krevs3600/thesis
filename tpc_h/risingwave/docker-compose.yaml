@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres_db_tpc
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: BusinessDB
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=logical"
+      - "-c"
+      - "max_replication_slots=4"
+      - "-c"
+      - "max_wal_senders=4"      
+      - "-c"
+      - "wal_keep_size=64"   
+    volumes:
+      - ${INPUT_PATH}:/csv_data
+    ports:
+      - "5432:5432"                              # Expose Postgres port
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d testdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - psg-rw-tpc-h
+
+  risingwave:
+    image: risingwavelabs/risingwave:latest
+    container_name: risingwave
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "4566:4566"
+      - "80:80"                              # Expose RisingWave port
+    command: playground
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "localhost", "-p", "4566"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - psg-rw-tpc-h 
+
+networks:
+  psg-rw-tpc-h:
+    name: psg-rw-tpc-h    
+    driver: bridge

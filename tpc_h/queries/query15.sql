@@ -30,5 +30,3 @@ where
 	)
 order by
 	s_suppkey;
-
-drop view revenue0;
