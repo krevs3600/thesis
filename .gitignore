@@ -1,8 +1,13 @@
 # ignore output files
 output/
 env.sh
+results.db
 
 # ignore any python cache files
 __pycache__/
 *.pyc
 target/
+
+# tpc_h
+/tpc_h/data/input/*.csv
+/tpc_h/data/input/*.duckdb

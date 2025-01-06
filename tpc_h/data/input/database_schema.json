@@ -1,0 +1,307 @@
+{
+    "database": {
+        "name": "BusinessDB",
+        "tables": [
+            {
+                "name": "PART",
+                "file": "part.csv",
+                "primary_key": "P_PARTKEY",
+                "columns": [
+                    {
+                        "name": "P_PARTKEY",
+                        "data_type": "INTEGER"
+                    },
+                    {
+                        "name": "P_NAME",
+                        "data_type": "VARCHAR(55)"
+                    },
+                    {
+                        "name": "P_MFGR",
+                        "data_type": "CHAR(25)"
+                    },
+                    {
+                        "name": "P_BRAND",
+                        "data_type": "CHAR(10)"
+                    },
+                    {
+                        "name": "P_TYPE",
+                        "data_type": "VARCHAR(25)"
+                    },
+                    {
+                        "name": "P_SIZE",
+                        "data_type": "INTEGER"
+                    },
+                    {
+                        "name": "P_CONTAINER",
+                        "data_type": "CHAR(10)"
+                    },
+                    {
+                        "name": "P_RETAILPRICE",
+                        "data_type": "DECIMAL"
+                    },
+                    {
+                        "name": "P_COMMENT",
+                        "data_type": "VARCHAR(23)"
+                    }
+                ]
+            },
+            {
+                "name": "SUPPLIER",
+                "file": "supplier.csv",
+                "primary_key": "S_SUPPKEY",
+                "columns": [
+                    {
+                        "name": "S_SUPPKEY",
+                        "data_type": "INTEGER"
+                    },
+                    {
+                        "name": "S_NAME",
+                        "data_type": "CHAR(25)"
+                    },
+                    {
+                        "name": "S_ADDRESS",
+                        "data_type": "VARCHAR(40)"
+                    },
+                    {
+                        "name": "S_NATIONKEY",
+                        "data_type": "INTEGER"
+                    },
+                    {
+                        "name": "S_PHONE",
+                        "data_type": "CHAR(15)"
+                    },
+                    {
+                        "name": "S_ACCTBAL",
+                        "data_type": "DECIMAL"
+                    },
+                    {
+                        "name": "S_COMMENT",
+                        "data_type": "VARCHAR(101)"
+                    }
+                ]
+            },
+            {
+                "name": "PARTSUPP",
+                "file": "partsupp.csv",
+                "primary_key": "PS_PARTKEY, PS_SUPPKEY",
+                "columns": [
+                    {
+                        "name": "PS_PARTKEY",
+                        "data_type": "INTEGER"
+                    },
+                    {
+                        "name": "PS_SUPPKEY",
+                        "data_type": "INTEGER"
+                    },
+                    {
+                        "name": "PS_AVAILQTY",
+                        "data_type": "INTEGER"
+                    },
+                    {
+                        "name": "PS_SUPPLYCOST",
+                        "data_type": "DECIMAL"
+                    },
+                    {
+                        "name": "PS_COMMENT",
+                        "data_type": "VARCHAR(199)"
+                    }
+                ]
+            },
+            {
+                "name": "CUSTOMER",
+                "file": "customer.csv",
+                "primary_key": "C_CUSTKEY",
+                "columns": [
+                    {
+                        "name": "C_CUSTKEY",
+                        "data_type": "INTEGER"
+                    },
+                    {
+                        "name": "C_NAME",
+                        "data_type": "VARCHAR(25)"
+                    },
+                    {
+                        "name": "C_ADDRESS",
+                        "data_type": "VARCHAR(40)"
+                    },
+                    {
+                        "name": "C_NATIONKEY",
+                        "data_type": "INTEGER"
+                    },
+                    {
+                        "name": "C_PHONE",
+                        "data_type": "CHAR(15)"
+                    },
+                    {
+                        "name": "C_ACCTBAL",
+                        "data_type": "DECIMAL"
+                    },
+                    {
+                        "name": "C_MKTSEGMENT",
+                        "data_type": "CHAR(10)"
+                    },
+                    {
+                        "name": "C_COMMENT",
+                        "data_type": "VARCHAR(117)"
+                    }
+                ]
+            },
+            {
+                "name": "ORDERS",
+                "file": "orders.csv",
+                "primary_key": "O_ORDERKEY",
+                "columns": [
+                    {
+                        "name": "O_ORDERKEY",
+                        "data_type": "INTEGER"
+                    },
+                    {
+                        "name": "O_CUSTKEY",
+                        "data_type": "INTEGER"
+                    },
+                    {
+                        "name": "O_ORDERSTATUS",
+                        "data_type": "CHAR(1)"
+                    },
+                    {
+                        "name": "O_TOTALPRICE",
+                        "data_type": "DECIMAL"
+                    },
+                    {
+                        "name": "O_ORDERDATE",
+                        "data_type": "DATE"
+                    },
+                    {
+                        "name": "O_ORDERPRIORITY",
+                        "data_type": "CHAR(15)"
+                    },
+                    {
+                        "name": "O_CLERK",
+                        "data_type": "CHAR(15)"
+                    },
+                    {
+                        "name": "O_SHIPPRIORITY",
+                        "data_type": "INTEGER"
+                    },
+                    {
+                        "name": "O_COMMENT",
+                        "data_type": "VARCHAR(79)"
+                    }
+                ]
+            },
+            {
+                "name": "LINEITEM",
+                "file": "lineitem.csv",
+                "primary_key": "L_ORDERKEY, L_LINENUMBER",
+                "columns": [
+                    {
+                        "name": "L_ORDERKEY",
+                        "data_type": "INTEGER"
+                    },
+                    {
+                        "name": "L_PARTKEY",
+                        "data_type": "INTEGER"
+                    },
+                    {
+                        "name": "L_SUPPKEY",
+                        "data_type": "INTEGER"
+                    },
+                    {
+                        "name": "L_LINENUMBER",
+                        "data_type": "INTEGER"
+                    },
+                    {
+                        "name": "L_QUANTITY",
+                        "data_type": "DECIMAL"
+                    },
+                    {
+                        "name": "L_EXTENDEDPRICE",
+                        "data_type": "DECIMAL"
+                    },
+                    {
+                        "name": "L_DISCOUNT",
+                        "data_type": "DECIMAL"
+                    },
+                    {
+                        "name": "L_TAX",
+                        "data_type": "DECIMAL"
+                    },
+                    {
+                        "name": "L_RETURNFLAG",
+                        "data_type": "CHAR(1)"
+                    },
+                    {
+                        "name": "L_LINESTATUS",
+                        "data_type": "CHAR(1)"
+                    },
+                    {
+                        "name": "L_SHIPDATE",
+                        "data_type": "DATE"
+                    },
+                    {
+                        "name": "L_COMMITDATE",
+                        "data_type": "DATE"
+                    },
+                    {
+                        "name": "L_RECEIPTDATE",
+                        "data_type": "DATE"
+                    },
+                    {
+                        "name": "L_SHIPINSTRUCT",
+                        "data_type": "CHAR(25)"
+                    },
+                    {
+                        "name": "L_SHIPMODE",
+                        "data_type": "CHAR(10)"
+                    },
+                    {
+                        "name": "L_COMMENT",
+                        "data_type": "VARCHAR(44)"
+                    }
+                ]
+            },
+            {
+                "name": "NATION",
+                "file": "nation.csv",
+                "primary_key": "N_NATIONKEY",
+                "columns": [
+                    {
+                        "name": "N_NATIONKEY",
+                        "data_type": "INTEGER"
+                    },
+                    {
+                        "name": "N_NAME",
+                        "data_type": "CHAR(25)"
+                    },
+                    {
+                        "name": "N_REGIONKEY",
+                        "data_type": "INTEGER"
+                    },
+                    {
+                        "name": "N_COMMENT",
+                        "data_type": "VARCHAR(152)"
+                    }
+                ]
+            },
+            {
+                "name": "REGION",
+                "file": "region.csv",
+                "primary_key": "R_REGIONKEY",
+                "columns": [
+                    {
+                        "name": "R_REGIONKEY",
+                        "data_type": "INTEGER"
+                    },
+                    {
+                        "name": "R_NAME",
+                        "data_type": "CHAR(25)"
+                    },
+                    {
+                        "name": "R_COMMENT",
+                        "data_type": "VARCHAR(152)"
+                    }
+                ]
+            }
+        ]
+    }
+}
