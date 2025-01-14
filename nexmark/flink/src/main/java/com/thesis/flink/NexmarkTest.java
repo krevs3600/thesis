@@ -1,9 +1,14 @@
 package com.thesis.flink;
 
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.java.tuple.Tuple4;
@@ -72,14 +77,15 @@ public class NexmarkTest {
             "bid", 
             bidStream,
             Schema.newBuilder()
+                .column("idx", DataTypes.BIGINT())
                 .column("auction", DataTypes.BIGINT())
                 .column("bidder", DataTypes.BIGINT())
                 .column("price", DataTypes.BIGINT())
                 .column("channel", DataTypes.STRING())
                 .column("url", DataTypes.STRING())
-                .column("date_time", DataTypes.BIGINT()) 
-                .columnByExpression("event_time", "TO_TIMESTAMP_LTZ(date_time, 3)") // Derived TIMESTAMP column
-                .watermark("event_time", "event_time - INTERVAL '5' SECOND")
+                .column("date_time", DataTypes.TIMESTAMP_LTZ(3)) 
+                //.columnByExpression("event_time", "TO_TIMESTAMP_LTZ(date_time, 3)") // Derived TIMESTAMP column
+                .watermark("date_time", "date_time - INTERVAL '5' SECOND")
                 .column("extra", DataTypes.STRING())
                 .build()
         );
@@ -88,15 +94,16 @@ public class NexmarkTest {
             "auction", 
             auctionStream,
             Schema.newBuilder()
+                .column("idx", DataTypes.BIGINT())
                 .column("id", DataTypes.BIGINT())               
                 .column("item_name", DataTypes.STRING())        
                 .column("description", DataTypes.STRING())      
                 .column("initial_bid", DataTypes.BIGINT())      
                 .column("reserve", DataTypes.BIGINT())          
-                .column("date_time", DataTypes.BIGINT())
-                .columnByExpression("event_time", "TO_TIMESTAMP_LTZ(date_time, 3)") // Derived TIMESTAMP column
-                .watermark("event_time", "event_time - INTERVAL '5' SECOND")  
-                .column("expires", DataTypes.BIGINT())  
+                .column("date_time", DataTypes.TIMESTAMP_LTZ(3))
+                //.columnByExpression("event_time", "TO_TIMESTAMP_LTZ(date_time, 3)") // Derived TIMESTAMP column
+                .watermark("date_time", "date_time - INTERVAL '5' SECOND")  
+                .column("expires", DataTypes.TIMESTAMP_LTZ(3))  
                 .column("seller", DataTypes.BIGINT())           
                 .column("category", DataTypes.INT())         
                 .column("extra", DataTypes.STRING())            
@@ -107,39 +114,68 @@ public class NexmarkTest {
             "person", 
             personStream,
             Schema.newBuilder()
+                .column("idx", DataTypes.BIGINT())
                 .column("id", DataTypes.BIGINT())               
                 .column("name", DataTypes.STRING())             
                 .column("email_address", DataTypes.STRING())    
                 .column("credit_card", DataTypes.STRING())      
                 .column("city", DataTypes.STRING())             
                 .column("state", DataTypes.STRING())            
-                .column("date_time", DataTypes.BIGINT())
+                .column("date_time", DataTypes.TIMESTAMP_LTZ(3))
                 .column("extra", DataTypes.STRING())
-                .columnByExpression("event_time", "TO_TIMESTAMP_LTZ(date_time, 3)") // Derived TIMESTAMP column
-                .watermark("event_time", "event_time - INTERVAL '5' SECOND")             
+                //.columnByExpression("event_time", "TO_TIMESTAMP_LTZ(date_time, 3)") // Derived TIMESTAMP column
+                .watermark("date_time", "date_time - INTERVAL '5' SECOND")             
                 .build()
         );
         
     }
     
+    public static String readSqlFile(String resourcePath) {
+        // Get the class loader for loading the resource
+        ClassLoader classLoader = NexmarkTest.class.getClassLoader();
+
+        // Load the resource as an InputStream
+        try (InputStream inputStream = classLoader.getResourceAsStream(resourcePath)) {
+            if (inputStream == null) {
+                throw new IOException("Resource not found: " + resourcePath);
+            }
+
+            // Convert the InputStream to a String
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+                return reader.lines().collect(Collectors.joining("\n"));
+            }
+            catch (IOException e) {
+                System.out.println("Error reading file: " + resourcePath);
+                System.exit(0);
+            }
+        }
+        catch (Exception e) {
+            System.out.print(e.toString());
+            System.exit(0);
+        }
+
+        return "";
+    }
+
+
     
-    public TableResult sqlQuery1(){
-        return tableEnv.executeSql("SELECT\n" + //
-                        "    auction,\n" + //
-                        "    bidder,\n" + //
-                        "    0.908 * price as price, -- convert dollar to euro\n" + //
-                        "    event_time ,\n" + //
-                        "    extra\n" + //
-                        "FROM bid;");
+    public void execQuery(int query_number){
+        String drop_sink = "DROP TABLE IF EXISTS kafka_sink";
+        String query = readSqlFile(String.format("queries/query%d.sql", query_number));
+        String kafka_sink = readSqlFile(String.format("sinks/query%d.sql", query_number));
+        
+        tableEnv.executeSql(drop_sink);
+        tableEnv.executeSql(kafka_sink);
+        tableEnv.executeSql("INSERT INTO kafka_sink " + query);
     }
 
     public TableResult sqlQuery2(){
-        return tableEnv.executeSql("SELECT auction, price FROM bid WHERE MOD(auction, 123) = 0;");
+        return tableEnv.executeSql("SELECT auction, price, event_time FROM bid WHERE MOD(auction, 123) = 0;");
     }
 
     public TableResult sqlQuery3(){
         return tableEnv.executeSql("SELECT" + //
-        "   P.name, P.city, P.state, A.id" + //
+        "   P.name, P.city, P.state, A.id, P" + //
         "   FROM" + //
         "   auction AS A INNER JOIN person AS P on A.seller = P.id" + //
         "   WHERE" + //
