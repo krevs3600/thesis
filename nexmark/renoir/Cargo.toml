@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-renoir = { git = "https://github.com/deib-polimi/renoir.git", rev = "39f52ddcbe8edc62d55448e7410306b6f01c2d61" }
+renoir = { git = "https://github.com/deib-polimi/renoir.git", branch = "dev", features = ["rdkafka"] }
 serde = { version = "1.0.215", features = ["derive"] }
 rdkafka = { version = "0.37.0", features = ["tokio"] }
 tokio = { version = "1.37.0", features = ["full"] }
