@@ -7,9 +7,14 @@ use renoir::{operator::Timestamp, Replication, StreamContext};
 use rdkafka::{config::RDKafkaLogLevel, ClientConfig, Message};
 use tokio;
 use std::{fs::File, io::Read, time::{Instant, SystemTime, UNIX_EPOCH}};
+use chrono::NaiveDateTime;
 
 
 const WATERMARK_INTERVAL: usize = 64;
+
+fn date_to_i64(date : &str) -> i64{
+    NaiveDateTime::parse_from_str(date, "%Y-%m-%d %H:%M:%S").unwrap().and_utc().timestamp()
+}
 
 
 fn _parse_json(payload: &[u8]) -> Option<Event> {
@@ -95,8 +100,9 @@ fn query2() -> StreamContext {
         .filter_map(|bid| bid)
         .filter(|bid| {
             // Keep only bids with specified auction IDs
-            let relevant_auctions = vec![1007, 1020, 2001, 2019, 2087];
-            relevant_auctions.contains(&bid.auction)
+            //let relevant_auctions = vec![1007, 1020, 2001, 2019, 2087];
+            //relevant_auctions.contains(&bid.auction)
+            bid.auction % 123 == 0
         })
         .map(|bid| {
             let json = serde_json::to_string(&bid).expect("Failed to serialize Bid");
@@ -136,11 +142,11 @@ fn query3() -> StreamContext {
                 }))
                 .filter_map(|person| person)
                 .filter(|person| {
-                    let filter_state = vec!["OR", "ID", "CA"];
+                    let filter_state = vec!["or", "id", "ca"];
                     filter_state.contains(&person.state.as_str())
                 }), 
             |auction| auction.seller , |person| person.id)
-        .map(|(_, (auction, person))| (person.name, person.city, person.state, auction.id))
+        .map(|(_, (auction, person))| (person.name, person.city, person.state, auction.id, person.idx))
         .drop_key()
         .map(|row| {
             let json = serde_json::to_string(&row).expect("Failed to serialize Bid");
@@ -210,7 +216,7 @@ fn query5() -> StreamContext {
     let bid = ctx.stream_kafka(bid_consumer, &["bid-topic"], Replication::Unlimited);
 
     let window_descr = EventTimeWindow::sliding(4, 2);
-    let window_count = CountWindow::new(10, 5, true);
+    let _window_count = CountWindow::new(10, 5, true);
     let mut producer = ClientConfig::new();
     producer
         .set("bootstrap.servers", broker)
@@ -225,7 +231,7 @@ fn query5() -> StreamContext {
         }))
         .filter_map(|bid| bid)
         
-        .add_timestamps(|bid| bid.date_time as i64,  {
+        .add_timestamps(|bid| date_to_i64(&bid.date_time) ,  {
             let mut count = 0;
             move |_, ts| watermark_gen(ts, &mut count, WATERMARK_INTERVAL)
         })
@@ -283,7 +289,7 @@ fn query6() -> StreamContext {
             serde_json::from_str::<Bid>(&payload_str).ok()
         }))
         .flat_map(|bid| bid)
-        .add_timestamps(|bid| bid.date_time as i64,  {
+        .add_timestamps(|bid| date_to_i64(&bid.date_time),  {
             let mut count = 0;
             move |_, ts| watermark_gen(ts, &mut count, WATERMARK_INTERVAL)
         })
@@ -293,7 +299,7 @@ fn query6() -> StreamContext {
                 serde_json::from_str::<Auction>(&payload_str).ok()
             }))
             .flat_map(|auction| auction)
-            .add_timestamps(|auction| auction.date_time as i64,  {
+            .add_timestamps(|auction| date_to_i64(&auction.date_time),  {
                 let mut count = 0;
                 move |_, ts| watermark_gen(ts, &mut count, WATERMARK_INTERVAL)
             }), 
@@ -304,8 +310,8 @@ fn query6() -> StreamContext {
             let since_epoch = start
                 .duration_since(UNIX_EPOCH)
                 .expect("Time went backwards");
-            let millis = since_epoch.as_millis() as u64;
-            bid.date_time <= auction.expires && auction.expires <= millis
+            let millis = since_epoch.as_millis() as i64;
+            date_to_i64(&bid.date_time) <= date_to_i64(&auction.expires) && date_to_i64(&auction.expires) <= millis
         })
         .unkey()
         .map(|(_, (bid, auction))| (auction.seller, bid.price))
@@ -443,7 +449,7 @@ fn test() -> StreamContext{
             serde_json::from_str::<Bid>(&payload_str).ok()
         }))
         .filter_map(|event| event)// Filter out invalid messages
-        .add_timestamps(|bid| bid.date_time as i64,  {
+        .add_timestamps(|bid| date_to_i64(&bid.date_time),  {
             let mut count = 0;
             move |_, ts| watermark_gen(ts, &mut count, WATERMARK_INTERVAL)
         })
