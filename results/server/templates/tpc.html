@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Run TPC Test</title>
+</head>
+<body>
+    <h1>Run TPC Test</h1>
+    <form action="/start_tpc_test" method="POST">
+        <!-- Select Backend -->
+        <label for="backend">Select Backend:</label>
+        <select name="backend" id="backend">
+            <option value="all">All</option>
+            <option value="flink">Flink</option>
+            <option value="risingwave">RisingWave</option>
+            <option value="duckdb">DuckDB</option>
+            <option value="renoir">Renoir</option>
+            <option value="polars">Polars</option>
+        </select>
+        <br><br>
+
+        <!-- Select Query -->
+        <label for="query">Select Query:</label>
+        <select name="query" id="query">
+            <option value="all">All</option>
+            {% for i in range(1, 23) %}
+            <option value="{{ i }}">{{ i }}</option>
+            {% endfor %}
+        </select>
+        <br><br>
+
+        <!-- Select Number of Runs -->
+        <label for="num_runs">Number of Runs:</label>
+        <input type="number" name="num_runs" id="num_runs" min="1" max="10" value="1">
+        <br><br>
+
+        <!-- Test Name -->
+        <label for="test_name">Test Name:</label>
+        <input type="text" name="test_name" id="test_name" placeholder="Enter test name">
+        <br><br>
+
+        <!-- Submit Button -->
+        <button type="submit">Start Test</button>
+    </form>
+</body>
+</html>
