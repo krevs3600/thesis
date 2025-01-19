@@ -14,7 +14,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::sleep;
 use std::{collections::VecDeque, sync::Arc, sync::Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use std::fs::File;
+use std::fs::{File, create_dir_all};
 use std::io::Write;
 
 #[derive(Parser)]
@@ -42,6 +42,9 @@ enum Commands {
         /// Topic to read from
         #[arg(short, long)]
         topic: Option<String>,
+        /// Query that it's been executed
+        #[arg(short, long, default_value = "1")]
+        query: Option<usize>
         
     },
 }
@@ -92,6 +95,7 @@ async fn main() {
             events,
             steps,
             topic,
+            query
         } => {
             // Proceed to generate events if --generate flag is provided
             let producer = Arc::new(KafkaEventProducer::new(brokers));
@@ -101,7 +105,7 @@ async fn main() {
             let consumer_event_complete = Arc::clone(&event_generation_complete);
             let consumer = KafkaConsumer::new(
                 brokers,
-                format!("{}-topic", topic.unwrap()).as_str(), 
+                format!("{}-topic", topic.clone().unwrap()).as_str(), 
                 "res-consumer",  // Consumer group name
                 Arc::clone(&incoming_events),
                 consumer_event_complete
@@ -126,6 +130,7 @@ async fn main() {
                             num_event_generators: num_generators,
                             first_rate: steps,
                             next_rate: steps,
+                            first_event_id: 50,
                             ..Default::default()
                         };
                         let generator = nexmark::EventGenerator::new(conf)
@@ -179,8 +184,10 @@ async fn main() {
             consumer_handle.await.unwrap();
 
             // Save events to CSV and ARC if paths are provided
-            save_events_to_csv("outgoing_events.csv", &outgoing_events.lock().unwrap());
-            save_events_to_csv("incoming_events.csv", &incoming_events.lock().unwrap());
+            let path = format!("{}/{}", topic.clone().unwrap(), query.unwrap());
+            create_dir_all(&path).expect("Failed to create directories");
+            save_events_to_csv(format!("{}/outgoing_events.csv", path).as_str(), &outgoing_events.lock().unwrap());
+            save_events_to_csv(format!("{}/incoming_events.csv", path).as_str(), &incoming_events.lock().unwrap());
         }
     }
 }
