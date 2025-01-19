@@ -37,7 +37,8 @@ public class NexmarkTest {
             .inStreamingMode()
             .build();
         this.tableEnv = StreamTableEnvironment.create(env, settings);
-        initTableWithTableApi();
+        //initTableWithTableApi();
+        initTableFromKafkaSource();
     }
 
     private void initTableWithTableApi() {
@@ -91,7 +92,7 @@ public class NexmarkTest {
                 .column("url", DataTypes.STRING())
                 .column("date_time", DataTypes.TIMESTAMP_LTZ(3)) 
                 //.columnByExpression("event_time", "TO_TIMESTAMP_LTZ(date_time, 3)") // Derived TIMESTAMP column
-                .watermark("date_time", "date_time - INTERVAL '5' SECOND")
+                .watermark("date_time", "date_time - INTERVAL '1' SECOND")
                 .column("extra", DataTypes.STRING())
                 .build()
         );
@@ -108,7 +109,7 @@ public class NexmarkTest {
                 .column("reserve", DataTypes.BIGINT())          
                 .column("date_time", DataTypes.TIMESTAMP_LTZ(3))
                 //.columnByExpression("event_time", "TO_TIMESTAMP_LTZ(date_time, 3)") // Derived TIMESTAMP column
-                .watermark("date_time", "date_time - INTERVAL '5' SECOND")  
+                .watermark("date_time", "date_time - INTERVAL '1' SECOND")  
                 .column("expires", DataTypes.TIMESTAMP_LTZ(3))  
                 .column("seller", DataTypes.BIGINT())           
                 .column("category", DataTypes.INT())         
@@ -130,7 +131,7 @@ public class NexmarkTest {
                 .column("date_time", DataTypes.TIMESTAMP_LTZ(3))
                 .column("extra", DataTypes.STRING())
                 //.columnByExpression("event_time", "TO_TIMESTAMP_LTZ(date_time, 3)") // Derived TIMESTAMP column
-                .watermark("date_time", "date_time - INTERVAL '5' SECOND")             
+                .watermark("date_time", "date_time - INTERVAL '1' SECOND")             
                 .build()
         ); 
     }
