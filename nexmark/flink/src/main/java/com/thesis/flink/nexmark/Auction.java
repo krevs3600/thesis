@@ -25,8 +25,8 @@ public class Auction {
         this.date_time = localDateTime.toInstant(ZoneOffset.UTC);
     }
 
-    public void setExpires(String dateTime) {
-        LocalDateTime localDateTime = LocalDateTime.parse(dateTime, FORMATTER);
+    public void setExpires(String expires) {
+        LocalDateTime localDateTime = LocalDateTime.parse(expires, FORMATTER);
         this.expires = localDateTime.toInstant(ZoneOffset.UTC);
     }
 }
