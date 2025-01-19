@@ -1,11 +1,12 @@
 CREATE TABLE kafka_sink (
     avg_price DECIMAL(24,3),
     seller BIGINT,
-    idx BIGINT
+    idx BIGINT,
+    PRIMARY KEY (seller) NOT ENFORCED
 ) WITH (
-    'connector' = 'kafka',
+    'connector' = 'upsert-kafka',
     'topic' = 'flink-topic',
     'properties.bootstrap.servers' = 'localhost:19092',
-    'format' = 'json',
-    'sink.partitioner' = 'round-robin'
+    'value.format' = 'json',
+    'key.format' = 'json'
 );
