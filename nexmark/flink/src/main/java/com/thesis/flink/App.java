@@ -11,7 +11,7 @@ public class App {
             // Parse the query number from the first argument
             int queryNumber = Integer.parseInt(args[0]);
             
-            if (queryNumber <= 1 || queryNumber >= 9) {
+            if (queryNumber <= 0 || queryNumber >= 9) {
                 System.err.println("Query number must me between 1 and 8");
                 System.exit(1);
             }
