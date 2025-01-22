@@ -121,7 +121,8 @@ class Query(ABC):
 
     def drop_materialized_view(self):
         self.execute_sql("""DROP SINK IF EXISTS kafka_sink;""")
-        self.execute_sql("""DROP MATERIALIZED VIEW IF EXISTS winning_bids;""")
         self.execute_sql("""DROP MATERIALIZED VIEW IF EXISTS query;""")
+        self.execute_sql("""DROP MATERIALIZED VIEW IF EXISTS winning_bids;""")
+        
         
         
