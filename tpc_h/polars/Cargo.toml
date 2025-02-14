@@ -7,5 +7,6 @@ edition = "2021"
 eyre = "0.6.12"
 polars = {version = "x", features = ["lazy", "strings", "regex", "dtype-date", "is_in", "semi_anti_join"]}
 chrono="0.4"
+chronoutil = "0.2.7"
 reqwest = {version = "0.12.12", features = ["json", "blocking"]}
 serde_json = "1.0.134"

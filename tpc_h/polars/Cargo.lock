@@ -262,6 +262,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "chronoutil"
+version = "0.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c9b58b07a67cadda9502b270eca5e0f1cd3afd08445e0ab1d52d909db01b4543"
+dependencies = [
+ "chrono",
+]
+
+[[package]]
 name = "comfy-table"
 version = "7.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1799,6 +1808,7 @@ name = "polars-tpc"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "chronoutil",
  "eyre",
  "polars",
  "reqwest",
