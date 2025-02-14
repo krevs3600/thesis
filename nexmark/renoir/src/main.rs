@@ -5,12 +5,13 @@ use models::*;
 use renoir::prelude::*;
 use renoir::{operator::Timestamp, Replication, StreamContext};
 use rdkafka::{config::RDKafkaLogLevel, ClientConfig, Message};
+use serde_json::json;
 use tokio;
 use std::{fs::File, io::Read, time::{Instant, SystemTime, UNIX_EPOCH}};
 use chrono::NaiveDateTime;
 
 
-const WATERMARK_INTERVAL: usize = 64;
+const WATERMARK_INTERVAL: usize = 100;
 
 fn date_to_i64(date : &str) -> i64{
     NaiveDateTime::parse_from_str(date, "%Y-%m-%d %H:%M:%S").unwrap().and_utc().timestamp()
@@ -58,7 +59,7 @@ fn query1() -> StreamContext{
         .set("message.timeout.ms", "5000");
     
     
-    let bid = ctx.stream_kafka(bid_consumer, &["bid-topic"], Replication::Unlimited);
+    let bid = ctx.stream_kafka(bid_consumer, &["bid-topic"], Replication::One);
     
     bid
         .map(|m| m.payload().and_then(|payload| {
@@ -85,7 +86,7 @@ fn query2() -> StreamContext {
     let broker : &str = "localhost:19092";
     let bid_consumer = create_consumer_config(broker, "bid-group");
     
-    let bid = ctx.stream_kafka(bid_consumer, &["bid-topic"], Replication::Unlimited);
+    let bid = ctx.stream_kafka(bid_consumer, &["bid-topic"], Replication::One);
 
     let mut producer = ClientConfig::new();
     producer
@@ -119,8 +120,8 @@ fn query3() -> StreamContext {
     let auction_consumer = create_consumer_config(broker, "auction-group");
     let person_consumer = create_consumer_config(broker, "person-group");
     
-    let auction = ctx.stream_kafka(auction_consumer, &["auction-topic"], Replication::Unlimited);
-    let person = ctx.stream_kafka(person_consumer, &["person-topic"], Replication::Unlimited);
+    let auction = ctx.stream_kafka(auction_consumer, &["auction-topic"], Replication::One);
+    let person = ctx.stream_kafka(person_consumer, &["person-topic"], Replication::One);
 
     let mut producer = ClientConfig::new();
     producer
@@ -149,7 +150,14 @@ fn query3() -> StreamContext {
         .map(|(_, (auction, person))| (person.name, person.city, person.state, auction.id, person.idx))
         .drop_key()
         .map(|row| {
-            let json = serde_json::to_string(&row).expect("Failed to serialize Bid");
+            let structured_json = json!({
+                "name" : row.0,
+                "city" : row.1,
+                "state" : row.2,
+                "id": row.3,
+                "idx" : row.4
+            });
+            let json = serde_json::to_string(&structured_json).expect("Failed to serialize Bid");
             json.into_bytes()
         })
         .write_kafka(producer, "renoir-topic");
@@ -164,17 +172,14 @@ fn query4() -> StreamContext {
     let auction_consumer = create_consumer_config(broker, "auction-group");
     let bid_consumer = create_consumer_config(broker, "bid-group");
     
-    let auction = ctx.stream_kafka(auction_consumer, &["auction-topic"], Replication::Unlimited);
-    let bid = ctx.stream_kafka(bid_consumer, &["bid-topic"], Replication::Unlimited);
+    let auction = ctx.stream_kafka(auction_consumer, &["auction-topic"], Replication::One);
+    let bid = ctx.stream_kafka(bid_consumer, &["bid-topic"], Replication::One);
 
     let mut producer = ClientConfig::new();
     producer
         .set("bootstrap.servers", broker)
         .set("message.timeout.ms", "5000");
-    /*SELECT MAX(B.price) AS final, A.category
-    FROM auction A, bid B
-    WHERE A.id = B.auction AND B.dateTime BETWEEN A.dateTime AND A.expires
-    GROUP BY A.id, A.category*/
+
     auction
         .map(|m| m.payload().and_then(|payload| {
             let payload_str = String::from_utf8_lossy(payload).to_string();
@@ -190,18 +195,100 @@ fn query4() -> StreamContext {
                 .filter_map(|bid| bid), 
         |auction| auction.id,
         |bid| bid.auction)
-        //.filter(|(_,(auction, bid))|
-        //    bid.date_time >= auction.date_time && bid.date_time <= auction.expires
-        //)
+        .filter(|(_,(auction, bid))|
+           bid.date_time >= auction.date_time && bid.date_time <= auction.expires
+        )
         .unkey()
-        .map(|(_, (auction, bid))| (auction.id, auction.category, bid.price))
-        .group_by_avg(|(id, category, _)| (*id, *category), |(_, _, price)| *price as f64)
-        .unkey()
-        .map(|row| {
-            let json = serde_json::to_string(&row).expect("Failed to serialize Bid");
+        .map(|(_, (auction, bid))| (auction.id, auction.category, bid.price, bid.idx))
+        .group_by(|(id, category, _, _)| (*id, *category))
+        //.inspect(|row| println!("Item: {:?}", row))
+        .rich_map(
+            |(key, (_, _, price, idx))| {
+                // Crea uno stato per ciascuna chiave (auction.id, category)
+                let mut state = (0, 0); // Stato iniziale: (max price, max bid index)
+        
+                // Aggiorna lo stato con i valori del nuovo bid
+                state.0 = state.0.max(price); // Aggiorna il prezzo massimo
+                if state.0 == price {         // Se il nuovo prezzo è il massimo, aggiorna l'indice del bid
+                    state.1 = idx;
+                }
+        
+                // Mappa il risultato (auction.id, category, max price, max bid index)
+                (key.0, key.1, state.0, state.1)
+            }
+        )
+        //.unkey()
+        //.inspect(|row| println!("Item: {:?}", row)).for_each(std::mem::drop); 
+        // .group_by_fold(
+        //     |(id, category, _, _)| (*id, *category), 
+        //     (0,0), // 
+        //     |acc, row| {
+        //         acc.0 = acc.0.max(row.2); 
+        //         acc.1 = acc.1.max(row.3); 
+        //     },
+        //     |acc, other| {
+        //         acc.0 = acc.0.max(other.0); 
+        //         acc.1 = acc.1.max(other.1); 
+        //     }
+        // ) 
+        .drop_key()
+        //.map(|((auction_id, category_id), (final_price, max_bid_idx))| (auction_id, category_id, final_price, max_bid_idx))
+        //.map(|((auction_id, category_id), (a, b))| (auction_id, category_id, a, b))
+        //.inspect(|row| println!("Item: {:?}", row)).for_each(std::mem::drop); 
+        .group_by(|(auction_id, category_id, price, idx)| *category_id)
+        .rich_map(
+            |(key, (_, _, price, idx))| {
+                // Initialize state for each category
+                let mut state = (0, 0, 0); // (sum, count, max_idx)
+        
+                // Update state based on incoming row
+                state.0 += price; // Add price to sum
+                state.1 += 1; // Increment the count
+                state.2 = state.2.max(idx); // Update max index if necessary
+        
+                // Return the final state for this category
+                (*key, state.0, state.1, state.2) // (category_id, sum, count, max_idx)
+            }
+        )
+        .drop_key()
+        .map(| (category_id, sum, count, max)| {
+            let structured_json = json!({
+                "cateogory_id" : category_id,
+                "avg_final_price" : if count > 0 { sum / count } else { 0 },
+                "idx" : max
+            });
+            let json = serde_json::to_string(&structured_json).expect("Failed to serialize Bid");
             json.into_bytes()
         })
         .write_kafka(producer, "renoir-topic");
+        /*
+        .group_by_fold(
+            |(_, category_id, _, _)| *category_id,
+            (0,0,0), // sum, count, max_idx
+            |acc, row| {
+                acc.0 += row.2; 
+                acc.1 += 1;     
+                acc.2 = acc.2.max(row.3); 
+            },
+            |acc, other| {
+                acc.0 += other.0; 
+                acc.1 += other.1; 
+                acc.2 = acc.2.max(other.2); 
+            }
+        )
+        .unkey()
+        .map(| (category_id, (sum, count, max))| {
+            let structured_json = json!({
+                "cateogory_id" : category_id,
+                "avg_final_price" : if count > 0 { sum / count } else { 0 },
+                "idx" : max
+            });
+            let json = serde_json::to_string(&structured_json).expect("Failed to serialize Bid");
+            json.into_bytes()
+        })
+        .write_kafka(producer, "renoir-topic");
+      */
+        
     ctx
     
 }
@@ -213,9 +300,9 @@ fn query5() -> StreamContext {
     let broker : &str = "localhost:19092";
 
     let bid_consumer = create_consumer_config(broker, "bid-group");
-    let bid = ctx.stream_kafka(bid_consumer, &["bid-topic"], Replication::Unlimited);
+    let bid = ctx.stream_kafka(bid_consumer, &["bid-topic"], Replication::One);
 
-    let window_descr = EventTimeWindow::sliding(4, 2);
+    let window_descr = EventTimeWindow::sliding(10, 20);
     let _window_count = CountWindow::new(10, 5, true);
     let mut producer = ClientConfig::new();
     producer
@@ -224,7 +311,6 @@ fn query5() -> StreamContext {
     
     // count how bids in each auction, for every window
     let counts = bid
-        .batch_mode(BatchMode::single())
         .map(|m| m.payload().and_then(|payload| {
             let payload_str = String::from_utf8_lossy(payload).to_string();
             serde_json::from_str::<Bid>(&payload_str).ok()
@@ -235,22 +321,32 @@ fn query5() -> StreamContext {
             let mut count = 0;
             move |_, ts| watermark_gen(ts, &mut count, WATERMARK_INTERVAL)
         })
-        
-        .group_by(|a| a.auction)
-        //.inspect(|row| println!("TS: {:?}", row))
+        .group_by(|bid| bid.auction)
         .window(window_descr.clone())
-        .count()
+        .fold(
+            (0,0), 
+            |(count, max_idx),  bid| {
+                *count+=1;
+                *max_idx = if bid.idx > *max_idx  {bid.idx} else {*max_idx};
+            }
+        )
         .unkey()
-        .inspect(|row| println!("Item: {:?}", row));
- 
+        .window_all(window_descr.clone());
+        
+
     counts
-        .window_all(window_descr)
-        .max_by_key(|(_, v)| *v)
-        .unkey()
+        //.window_all(window_descr)
+        .max_by_key(|(v, _)| *v)
+        .drop_key()
         //.inspect(|row| println!("Item: {:?}", row)).for_each(std::mem::drop);
         
-        .map(|(_, (auction, count))| {
-            let json = serde_json::to_string(&(auction,count)).expect("Failed to serialize Bid");
+        .map(|(auction, (count, max_idx))| {
+            let structure_json = json!({
+                "auction" : auction,
+                "count" : count,
+                "idx" : max_idx
+            });
+            let json = serde_json::to_string(&structure_json).expect("Failed to serialize Bid");
             json.into_bytes()
         })
         .write_kafka(producer, "renoir-topic"); 
@@ -258,21 +354,7 @@ fn query5() -> StreamContext {
 
 }
 
- 
-fn query6() -> StreamContext {
-    let ctx = StreamContext::new_local();
-    let broker : &str = "localhost:19092";
-
-    let auction_consumer = create_consumer_config(broker, "auction-group");
-    let bid_consumer = create_consumer_config(broker, "bid-group");
-    
-    let bid = ctx.stream_kafka(bid_consumer, &["bid-topic"], Replication::Unlimited);
-    let auction = ctx.stream_kafka(auction_consumer, &["auction-topic"], Replication::Unlimited);
-    let mut producer = ClientConfig::new();
-    producer
-        .set("bootstrap.servers", broker)
-        .set("message.timeout.ms", "5000");
-    /*/// Query 6: Average Selling Price by Seller
+/*/// Query 6: Average Selling Price by Seller
 ///
 /// ```text
 /// SELECT Istream(AVG(Q.final), Q.seller)
@@ -282,27 +364,40 @@ fn query6() -> StreamContext {
 ///       GROUP BY A.id, A.seller) [PARTITION BY A.seller ROWS 10] Q
 /// GROUP BY Q.seller;
 /// ``` */
+ 
+fn query6() -> StreamContext {
+    let ctx = StreamContext::new_local();
+    let broker : &str = "localhost:19092";
+
+    let auction_consumer = create_consumer_config(broker, "auction-group");
+    let bid_consumer = create_consumer_config(broker, "bid-group");
+    
+    let bid = ctx.stream_kafka(bid_consumer, &["bid-topic"], Replication::One);
+    let auction = ctx.stream_kafka(auction_consumer, &["auction-topic"], Replication::One);
+    let mut producer = ClientConfig::new();
+    producer
+        .set("bootstrap.servers", broker)
+        .set("message.timeout.ms", "5000");
+
+
+    let auction = auction.map(|m| m.payload().and_then(|payload| {
+        let payload_str = String::from_utf8_lossy(payload).to_string();
+        serde_json::from_str::<Auction>(&payload_str).ok()
+    }))
+    .flat_map(|auction| auction);
+
+    let bid = bid
+    .map(|m| m.payload().and_then(|payload| {
+        let payload_str = String::from_utf8_lossy(payload).to_string();
+        serde_json::from_str::<Bid>(&payload_str).ok()
+    }))
+    .flat_map(|bid| bid);
+    
+
 
     bid
-        .map(|m| m.payload().and_then(|payload| {
-            let payload_str = String::from_utf8_lossy(payload).to_string();
-            serde_json::from_str::<Bid>(&payload_str).ok()
-        }))
-        .flat_map(|bid| bid)
-        .add_timestamps(|bid| date_to_i64(&bid.date_time),  {
-            let mut count = 0;
-            move |_, ts| watermark_gen(ts, &mut count, WATERMARK_INTERVAL)
-        })
         .join(
-            auction.map(|m| m.payload().and_then(|payload| {
-                let payload_str = String::from_utf8_lossy(payload).to_string();
-                serde_json::from_str::<Auction>(&payload_str).ok()
-            }))
-            .flat_map(|auction| auction)
-            .add_timestamps(|auction| date_to_i64(&auction.date_time),  {
-                let mut count = 0;
-                move |_, ts| watermark_gen(ts, &mut count, WATERMARK_INTERVAL)
-            }), 
+            auction, 
             |bid| bid.auction, 
             |auction| auction.id)
         .filter(|(_, (bid, auction))| {
@@ -314,35 +409,47 @@ fn query6() -> StreamContext {
             date_to_i64(&bid.date_time) <= date_to_i64(&auction.expires) && date_to_i64(&auction.expires) <= millis
         })
         .unkey()
-        .map(|(_, (bid, auction))| (auction.seller, bid.price))
-        .group_by(|(seller, _)| *seller)
+        .map(|(_, (bid, auction))| (auction.seller, bid.price, auction.idx))
+        .group_by(|(seller, _, _)| *seller)
         .window(CountWindow::sliding(10, 1))
         // AVG(Q.final)
-        .fold((0, 0), |(sum, count), (_, price)| {
+        .fold((0, 0, 0), |(sum, count, max_idx), (_, price, idx)| {
             *sum += price;
             *count += 1;
+            *max_idx = idx;
         })
-        .map(|(_, (sum, count))| sum as f32 / count as f32)
         .unkey()
-        .map(|bid| {
-            let json = serde_json::to_string(&bid).expect("Failed to serialize Bid");
+        .map(|(seller, (sum, count, max_idx))| (seller, sum as f32 / count as f32, max_idx))
+        .map(|(seller, price, idx)| {
+            let strutured_json = json!({
+                "seller" : seller,
+                "avg_final_price" : price,
+                "idx" : idx
+            });
+            let json = serde_json::to_string(&strutured_json).expect("Failed to serialize Bid");
             json.into_bytes()
         })
         .write_kafka(producer, "renoir-topic");
 
 
-
     ctx
 }
 
-
+/// Query 7: Highest Bid
+///
+/// ```text
+/// SELECT Rstream(B.auction, B.price, B.bidder)
+/// FROM Bid [RANGE 1 MINUTE SLIDE 1 MINUTE] B
+/// WHERE B.price = (SELECT MAX(B1.price)
+///                  FROM BID [RANGE 1 MINUTE SLIDE 1 MINUTE] B1);
+/// ```
 fn query7() -> StreamContext {
     
     let ctx = StreamContext::new_local();
     let broker : &str = "localhost:19092";
 
     let bid_consumer = create_consumer_config(broker, "bid-group");
-    let bid = ctx.stream_kafka(bid_consumer, &["bid-topic"], Replication::Unlimited);
+    let bid = ctx.stream_kafka(bid_consumer, &["bid-topic"], Replication::One);
 
     let mut producer = ClientConfig::new();
     producer
@@ -356,6 +463,10 @@ fn query7() -> StreamContext {
             serde_json::from_str::<Bid>(&payload_str).ok()
         }))
         .filter_map(|bid| bid )
+        .add_timestamps(|bid| date_to_i64(&bid.date_time),  {
+            let mut count = 0;
+            move |_, ts| watermark_gen(ts, &mut count, WATERMARK_INTERVAL)
+        })
         .map(|b| (b.auction, b.price, b.bidder))
         .key_by(|_| ())
         .window(window_descr.clone())
@@ -364,8 +475,13 @@ fn query7() -> StreamContext {
         .window_all(window_descr)
         .max_by_key(|(_, price, _)| *price)
         .unkey()
-        .map(|bid| {
-            let json = serde_json::to_string(&bid).expect("Failed to serialize Bid");
+        .map(|((), (auction, price, bidder))| {
+            let structured_json = json!({
+                "auction" : auction,
+                "price" : price,
+                "bidder" : bidder
+            });
+            let json = serde_json::to_string(&structured_json).expect("Failed to serialize Bid");
             json.into_bytes()
         })
         .write_kafka(producer, "renoir-topic");
@@ -382,7 +498,7 @@ fn query7() -> StreamContext {
 /// WHERE P.id = A.seller;
 /// ```
 fn query8() -> StreamContext {
-    let window_descr = EventTimeWindow::tumbling(10 * 1000);
+    let _window_descr = EventTimeWindow::tumbling(10 * 1000);
 
     let ctx = StreamContext::new_local();
     let broker : &str = "localhost:19092";
@@ -390,8 +506,8 @@ fn query8() -> StreamContext {
     let auction_consumer = create_consumer_config(broker, "auction-group");
     let person_consumer = create_consumer_config(broker, "person-group");
     
-    let person = ctx.stream_kafka(person_consumer, &["person-topic"], Replication::Unlimited);
-    let auction = ctx.stream_kafka(auction_consumer, &["auction-topic"], Replication::Unlimited);
+    let person = ctx.stream_kafka(person_consumer, &["person-topic"], Replication::One);
+    let auction = ctx.stream_kafka(auction_consumer, &["auction-topic"], Replication::One);
 
     let mut producer = ClientConfig::new();
     producer
@@ -404,7 +520,8 @@ fn query8() -> StreamContext {
             serde_json::from_str::<Person>(&payload_str).ok()
         }))
         .filter_map(|person| person )
-        .map(|p| (p.id, p.name));
+        
+        .map(|p| (p.id, p.name, p.idx));
 
     let auction = auction
         .map(|m| m.payload().and_then(|payload| {
@@ -412,18 +529,25 @@ fn query8() -> StreamContext {
             serde_json::from_str::<Auction>(&payload_str).ok()
         }))
         .filter_map(|auction| auction )
+        
         .map(|a| (a.seller, a.reserve));
 
     person
-        .group_by(|(id, _)| *id)
-        .window_join(window_descr, auction.group_by(|(seller, _)| *seller))
+        //.group_by(|(id, _, _)| *id)
+        .join(auction, |(id, _, _)| *id, |(seller, _)| *seller)
         .drop_key()
-        .map(|((id, name), (_, reserve))| (id, name, reserve))
-        .map(|bid| {
-            let json = serde_json::to_string(&bid).expect("Failed to serialize Bid");
+        .map(|((id, name, idx), (_, reserve))| (id, name, reserve, idx))
+        .map(|(id, name, reserve, idx)| {
+            let structured_json = json!({
+                "id" : id,
+                "name" : name,
+                "reserve" : reserve,
+                "idx" : idx
+            });
+            let json = serde_json::to_string(&structured_json).expect("Failed to serialize Bid");
             json.into_bytes()
         })
-        .write_kafka(producer, "renoir-topic");
+        .write_kafka(producer, "renoir-topic"); 
     ctx
 }   
 
@@ -441,7 +565,7 @@ fn test() -> StreamContext{
         .set("message.timeout.ms", "5000");
     
     
-    let bid = ctx.stream_kafka(bid_consumer, &["bid-topic"], Replication::Unlimited);
+    let bid = ctx.stream_kafka(bid_consumer, &["bid-topic"], Replication::One);
     
     bid
         .map(|m| m.payload().and_then(|payload| {
