@@ -43,14 +43,14 @@ impl KafkaConsumer {
 
     pub async fn consume_messages(&self) {
         let mut stream = self.consumer.stream();
-        let timeout_duration = tokio::time::Duration::from_secs(60);
+        let timeout_duration = tokio::time::Duration::from_secs(20);
         let mut last_message_time = SystemTime::now();
     
         while !self.event_generation_complete.load(Ordering::SeqCst) || SystemTime::now()
             .duration_since(last_message_time)
             .unwrap()
             .as_secs()
-            < 60
+            < 10
         {
             match tokio::time::timeout(timeout_duration, stream.next()).await {
                 Ok(Some(Ok(message))) => {

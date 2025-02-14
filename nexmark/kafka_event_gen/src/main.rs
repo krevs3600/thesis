@@ -111,6 +111,11 @@ async fn main() {
                 consumer_event_complete
             );
 
+            // Spawn consumer task to consume messages from Kafka
+            let consumer_handle = task::spawn(async move {
+                consumer.consume_messages().await;
+            });
+            
             // Data structure to store outgoing events for later saving
             let outgoing_events: Arc<Mutex<VecDeque<(u64, u64)>>> = Arc::new(Mutex::new(VecDeque::new()));
 
@@ -166,12 +171,9 @@ async fn main() {
                 .collect();
 
             // Wait for some time to allow event generation
-            sleep(Duration::new(10, 0));
+            // sleep(Duration::new(10, 0));
 
-            // Spawn consumer task to consume messages from Kafka
-            let consumer_handle = task::spawn(async move {
-                consumer.consume_messages().await;
-            });
+            
 
             // Wait for all generator tasks to complete
             for handle in generator_handles {
