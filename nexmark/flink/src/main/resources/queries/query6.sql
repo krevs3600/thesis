@@ -11,3 +11,6 @@ FROM (
     GROUP BY a.id, a.seller
 ) Q
 GROUP BY Q.seller;
+
+-- in truth it is not supported by flink beacuse of retractions, check https://github.com/nexmark/nexmark/blob/master/nexmark-flink/src/main/resources/queries/q6.sql
+-- this is not the actual right query

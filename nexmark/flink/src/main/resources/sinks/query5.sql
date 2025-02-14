@@ -1,6 +1,7 @@
 CREATE TABLE kafka_sink (
     auction BIGINT,
     idx BIGINT,
+    num BIGINT,
     window_start TIMESTAMP_LTZ(3),
     window_end TIMESTAMP_LTZ(3)
 ) WITH (
