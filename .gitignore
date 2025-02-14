@@ -11,3 +11,5 @@ target/
 # tpc_h
 /tpc_h/data/input/*.csv
 /tpc_h/data/input/*.duckdb
+
+TPC-H\ V3.0.1
