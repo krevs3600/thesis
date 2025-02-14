@@ -18,9 +18,9 @@ OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 BENCHMARK = "TPC-H"
 BACKEND = "duckdb"
 
-pd.set_option('display.max_rows', None)    # Show all rows
-pd.set_option('display.max_columns', None) # Show all columns
-pd.set_option('display.expand_frame_repr', False)  # Prevent wrapping of columns
+#pd.set_option('display.max_rows', None)    # Show all rows
+#pd.set_option('display.max_columns', None) # Show all columns
+#pd.set_option('display.expand_frame_repr', False)  # Prevent wrapping of columns
 
 
 def create_database():
@@ -43,11 +43,9 @@ def create_database():
         create_table_sql += ")"
         
         conn.execute(create_table_sql)
-        # Load data from the corresponding CSV file into the table.
-        # Data is loaded if it was never done before and this is checked through content of region table.
-        if not conn.execute("select * from REGION").fetchone():
-            csv_path = str(INPUT_PATH) + '/' + table['file']
-            conn.execute(f"COPY {table_name} FROM '{csv_path}'")
+        print(f"Loading data from {table['file']}")
+        csv_path = str(INPUT_PATH) + '/' + table['file']
+        conn.execute(f"COPY {table_name} FROM '{csv_path}'")
 
     # Example query to verify data
     result = conn.execute('SELECT * FROM PART LIMIT 5').fetchall()
@@ -74,7 +72,10 @@ def measure_db_creation_time():
     print(creation_time)
 
 def main(query_idx = 0, iteration = 1, test_name = "tpch"):
-    conn = create_database()   
+    #conn = create_database()  
+    with open(INPUT_PATH / 'database_schema.json') as f:
+        schema = json.load(f)
+    conn = duckdb.connect(str(INPUT_PATH) + '/' + schema["database"]["name"] + '.duckdb') 
     
     if (query_idx == 0):
         
@@ -86,6 +87,7 @@ def main(query_idx = 0, iteration = 1, test_name = "tpch"):
                 conn.execute(query)
                 df = conn.fetch_df()
                 print(df)
+                df.to_csv(OUTPUT_PATH / f"query{id+1}.csv", index=False)
                 execution_time = time.time() - start
                 send_execution_time(id+1, i, execution_time, test_name)
 
@@ -96,6 +98,7 @@ def main(query_idx = 0, iteration = 1, test_name = "tpch"):
         conn.execute(query)
         df = conn.fetch_df()
         print(df)
+        df.to_csv(str(OUTPUT_PATH / f"query{query_idx}.csv"), index=False)
         execution_time = time.time() - start
         print(execution_time)
         
