@@ -14,11 +14,7 @@ class Query2(Query):
             SELECT auction, price, idx
             FROM bid
             WHERE 
-                (auction = 1007 OR
-                auction = 1020 OR
-                auction = 2001 OR
-                auction = 2019 OR
-                auction = 2087);
+                MOD(auction, 123) = 0;
         """
         self.execute_sql(query)
 

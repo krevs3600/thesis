@@ -23,6 +23,49 @@ class Query6(Query):
             ) Q
             GROUP BY Q.seller;
         """
+
+        query = """
+        CREATE MATERIALIZED VIEW IF NOT EXISTS query AS
+        WITH ranked_bids AS (
+            SELECT
+                a.seller,
+                b.price,
+                b.idx,
+                b.date_time,
+                ROW_NUMBER() OVER (PARTITION BY a.id, a.seller ORDER BY b.price DESC) AS rownum
+            FROM
+                auction a
+            JOIN
+                bid b
+            ON
+                a.id = b.auction
+            WHERE
+                b.date_time BETWEEN a.date_time AND a.expires
+        ),
+        filtered_bids AS (
+            SELECT
+                seller,
+                price,
+                idx,
+                date_time
+            FROM
+                ranked_bids
+            WHERE
+                rownum <= 1
+        )
+        SELECT
+            seller,
+            AVG(price) OVER (
+                PARTITION BY seller
+                ORDER BY date_time ROWS BETWEEN 10 PRECEDING AND CURRENT ROW
+            ) AS avg_price,
+            MAX(idx) OVER (
+                PARTITION BY seller
+                ORDER BY date_time ROWS BETWEEN 10 PRECEDING AND CURRENT ROW
+            ) AS idx
+        FROM
+            filtered_bids;
+        """
         self.execute_sql(query)
 
 
